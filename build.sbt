@@ -1,6 +1,6 @@
 name := "macro-LMS"
 
-version := "0.3-SNAPSHOT"
+version := "1.0.0-SNAPSHOT"
 
 organization := "EPFL"
 
