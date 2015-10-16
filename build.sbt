@@ -1,6 +1,6 @@
 name := "macro-LMS"
 
-version := "0.3-SNAPSHOT"
+version := "1.0.0-macrovirt"
 
 organization := "EPFL"
 
@@ -10,12 +10,12 @@ scalaSource in Compile <<= baseDirectory(_ / "src")
 
 scalaSource in Test <<= baseDirectory(_ / "test-src")
 
-libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-library" % _ % "compile")
+libraryDependencies += "org.scala-lang" % "scala-library" % scalaVersion.value % "compile"
 
-libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-compiler" % _ % "compile")
+libraryDependencies += "org.scala-lang" % "scala-compiler" % scalaVersion.value % "compile"
 
-libraryDependencies ++= Seq( 
-  "org.scala-lang.virtualized" %% "scala-virtualized" % "0.0.1-SNAPSHOT"
+libraryDependencies ++= Seq(
+  "org.scala-lang.virtualized" %% "scala-virtualized" % "1.0.0-macrovirt"
 )
 
 libraryDependencies ++= Seq(
@@ -54,6 +54,6 @@ libraryDependencies ++= (
   else Nil
 )
 
-libraryDependencies <+= (scalaVersion)("org.scala-lang" % "scala-reflect" % _ % "compile")
+libraryDependencies += "org.scala-lang" % "scala-reflect" % scalaVersion.value % "compile"
 
 addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full)
