@@ -177,12 +177,13 @@ class TestInterpret extends FileDiffSuite {
     
     abstract class Fun {
       def exec(f: Frame): Rep[Any]
-      def execInt(f: Frame): Rep[Int] = exec(f).AsInstanceOf[Int] //= exec(f) match { case x: Int => x case x => throw Unexpected(x) }
+      def execInt(f: Frame): Rep[Int] = exec(f).asInstanceOf[Int] //TODO(trans): previously it was .AsInstanceOf
+        //= exec(f) match { case x: Int => x case x => throw Unexpected(x) }
     }
     
     class FunHolder extends Fun {
       //val sfun: Cell[Fun] = cell("sta - " + this.toString)
-      val dfun: Cell[RFun] = cell("dyn - " + this.toString)
+      val dfun: Cell[RFun] = cell[RFun]("dyn - " + this.toString)
       def exec(f: Frame): Rep[Any] = dfun.get.exec(f.data)
       override def execInt(f: Frame): Rep[Int] = dfun.get.execInt(f.data)
       def spec(f: Fun) = {

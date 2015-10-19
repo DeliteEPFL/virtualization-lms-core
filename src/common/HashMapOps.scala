@@ -7,7 +7,7 @@ import scala.collection.mutable.Set
 import java.util.HashMap
 import org.scala_lang.virtualized.SourceContext
 
-trait HashMapOps extends Base {
+trait HashMapOps extends Base with IterableOps with SetOps {
   implicit def hashMapTyp[K:Typ,V:Typ]: Typ[HashMap[K,V]]
 
   object HashMap {
@@ -39,7 +39,7 @@ trait HashMapOps extends Base {
   def hashmap_keys[K:Typ,V:Typ](m: Rep[HashMap[K,V]])(implicit pos: SourceContext): Rep[Iterable[K]]
 }
 
-trait HashMapOpsExp extends HashMapOps with EffectExp {
+trait HashMapOpsExp extends HashMapOps with EffectExp with BooleanOps {
   abstract class HashMapDef[K:Typ,V:Typ,R:Typ] extends Def[R] {
     val mK = manifest[K]
     val mV = manifest[V]

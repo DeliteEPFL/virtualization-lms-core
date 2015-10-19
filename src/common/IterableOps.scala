@@ -5,7 +5,8 @@ import java.io.PrintWriter
 import internal._
 import org.scala_lang.virtualized.SourceContext
 
-trait IterableOps extends Variables {
+trait IterableOps extends Variables with ArrayOps {
+  implicit def iterableTyp[T:Typ]: Typ[Iterable[T]]
 
   // multiple definitions needed because implicits won't chain
   implicit def varToIterableOps[A:Typ](x: Var[Iterable[A]]) = new IterableOpsCls(readVar(x))
@@ -23,7 +24,9 @@ trait IterableOps extends Variables {
 
 trait IterableOpsExp extends IterableOps with EffectExp with VariablesExp {
 
-  case class IterableForeach[T:Typ](a: Exp[Iterable[T]], x: Sym[T], block: Block[Unit]) extends Def[Unit]
+  case class IterableForeach[T:Typ](a: Exp[Iterable[T]], x: Sym[T], block: Block[Unit]) extends Def[Unit] {
+    val m = manifest[T]
+  }
   case class IterableToArray[T:Typ](a: Exp[Iterable[T]]) extends Def[Array[T]] {
     val m = manifest[T]
   }
@@ -38,7 +41,7 @@ trait IterableOpsExp extends IterableOps with EffectExp with VariablesExp {
   override def mirror[A:Typ](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = {
     (e match {
       case e@IterableToArray(x) => iterable_toarray(f(x))(e.m,pos)
-      case Reflect(e@IterableForeach(x,y,b), u, es) => reflectMirrored(Reflect(IterableForeach(f(x),f(y).asInstanceOf[Sym[_]],f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)    
+      case Reflect(e@IterableForeach(x,y,b), u, es) => reflectMirrored(Reflect(IterableForeach(f(x),f(y).asInstanceOf[Sym[_]],f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
       case Reflect(e@IterableToArray(x), u, es) => reflectMirrored(Reflect(IterableToArray(f(x))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)    
       case _ => super.mirror(e,f)
     }).asInstanceOf[Exp[A]] // why??
