@@ -1,4 +1,4 @@
-package scala.virtualization.lms
+package scala.lms
 package internal
 
 import java.io.{FileWriter, StringWriter, PrintWriter, File}
@@ -15,7 +15,7 @@ trait OpenCLCodegen extends GPUCodegen with CppHostTransfer with OpenCLDeviceTra
   override def fileExtension = "cl"
   override def toString = "opencl"
 
-  override def initializeGenerator(buildDir:String): Unit = {
+  override def initializeGenerator(buildDir:String, args: Array[String]): Unit = {
     val outDir = new File(buildDir)
     outDir.mkdirs
     helperFuncStream = new PrintWriter(new FileWriter(buildDir + deviceTarget + "helperFuncs.cpp"))
@@ -29,10 +29,11 @@ trait OpenCLCodegen extends GPUCodegen with CppHostTransfer with OpenCLDeviceTra
     headerStream.println("#include <limits>")
     headerStream.println("#include <float.h>")
     headerStream.println("#include <jni.h>")
+    headerStream.println("#include \"DeliteOpenCL.h\"")
     headerStream.println("#include \"" + deviceTarget + "types.h\"")
     headerStream.println(getDataStructureHeaders())
     
-    super.initializeGenerator(buildDir)
+    super.initializeGenerator(buildDir, args)
   }
 
   def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, out: PrintWriter) = {

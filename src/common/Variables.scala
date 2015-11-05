@@ -1,9 +1,9 @@
-package scala.virtualization.lms
+package scala.lms
 package common
 
 import java.io.PrintWriter
 import scala.reflect.SourceContext
-import scala.virtualization.lms.util.OverloadHack
+import scala.lms.util.OverloadHack
 import scala.reflect.SourceContext
 
 trait LiftVariables extends Base {
@@ -163,6 +163,7 @@ trait VariablesExp extends Variables with ImplicitOpsExp with VariableImplicits 
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
     case NewVar(a) => Nil
     case ReadVar(Variable(a)) => syms(a)
+    // TODO Nil in develop-0.9.x
     case Assign(Variable(a),b) => syms(a) // Assume the assignment is in a loop and alias back to previous readers (not precise!)
     case VarPlusEquals(Variable(a),b) => syms(a)
     case VarMinusEquals(Variable(a),b) => syms(a)

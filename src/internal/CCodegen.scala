@@ -1,4 +1,4 @@
-package scala.virtualization.lms
+package scala.lms
 package internal
 
 import java.io.{FileWriter, PrintWriter, File}
@@ -51,6 +51,8 @@ trait CCodegen extends CLikeCodegen with CppHostTransfer {
   override def emitValDef(sym: Sym[Any], rhs: String): Unit = {
     if (!isVoidType(sym.tp))
       stream.println(remapWithRef(sym.tp) + quote(sym) + " = " + rhs + ";")
+    else // we might still want the RHS for its effects
+      stream.println(rhs + ";")
   }
 
   override def emitVarDef(sym: Sym[Variable[Any]], rhs: String): Unit = {
@@ -72,7 +74,7 @@ trait CCodegen extends CLikeCodegen with CppHostTransfer {
     kernelOutputs = syms
   }
 
-  override def initializeGenerator(buildDir:String): Unit = {
+  override def initializeGenerator(buildDir:String, args: Array[String]): Unit = {
     val outDir = new File(buildDir)
     outDir.mkdirs
 
@@ -103,8 +105,9 @@ trait CCodegen extends CLikeCodegen with CppHostTransfer {
     headerStream.println("#include <algorithm>")
     headerStream.println("#include \"" + deviceTarget + "types.h\"")
     headerStream.println("#include \"" + deviceTarget + "actRecords.h\"")
+    headerStream.println(getDataStructureHeaders())
 
-    super.initializeGenerator(buildDir)
+    super.initializeGenerator(buildDir, args)
   }
 
   def emitForwardDef[A:Manifest](args: List[Manifest[_]], functionName: String, out: PrintWriter) = {
@@ -211,6 +214,8 @@ trait CCodegen extends CLikeCodegen with CppHostTransfer {
     typesStream.flush
     actRecordStream.flush
   }
+
+  def kernelName = "kernel_" + kernelOutputs.map(quote).mkString("")
 
 }
 

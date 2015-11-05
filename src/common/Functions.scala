@@ -1,17 +1,17 @@
-package scala.virtualization.lms
+package scala.lms
 package common
 
 import java.io.PrintWriter
 
-import scala.virtualization.lms.internal.{GenericNestedCodegen, GenerationFailedException}
-import scala.virtualization.lms.util.ClosureCompare
+import scala.lms.internal.{GenericNestedCodegen, GenerationFailedException}
+import scala.lms.util.ClosureCompare
 
 import scala.reflect.SourceContext
 
 trait Functions extends Base {
 
   def doLambda[A:Manifest,B:Manifest](fun: Rep[A] => Rep[B])(implicit pos: SourceContext): Rep[A => B]
-   def fun[A:Manifest,B:Manifest](f: Rep[A] => Rep[B]): Rep[A=>B] = doLambda(f)
+  implicit def fun[A:Manifest,B:Manifest](f: Rep[A] => Rep[B]): Rep[A=>B] = doLambda(f)
 
   implicit def toLambdaOps[A:Manifest,B:Manifest](fun: Rep[A => B]) = new LambdaOps(fun)
 
@@ -23,15 +23,15 @@ trait Functions extends Base {
 }
 
 trait TupledFunctions extends Functions with TupleOps {
-   def fun[B:Manifest](f: () => Rep[B]): Rep[Unit=>B] =
+  implicit def fun[B:Manifest](f: () => Rep[B]): Rep[Unit=>B] =
     fun((t: Rep[Unit]) => f())
-   def fun[A1:Manifest,A2:Manifest,B:Manifest](f: (Rep[A1], Rep[A2]) => Rep[B]): Rep[((A1,A2))=>B] =
+  implicit def fun[A1:Manifest,A2:Manifest,B:Manifest](f: (Rep[A1], Rep[A2]) => Rep[B]): Rep[((A1,A2))=>B] =
     fun((t: Rep[(A1,A2)]) => f(tuple2_get1(t), tuple2_get2(t)))
-   def fun[A1:Manifest,A2:Manifest,A3:Manifest,B:Manifest](f: (Rep[A1], Rep[A2], Rep[A3]) => Rep[B]): Rep[((A1,A2,A3))=>B] =
+  implicit def fun[A1:Manifest,A2:Manifest,A3:Manifest,B:Manifest](f: (Rep[A1], Rep[A2], Rep[A3]) => Rep[B]): Rep[((A1,A2,A3))=>B] =
     fun((t: Rep[(A1,A2,A3)]) => f(tuple3_get1(t), tuple3_get2(t), tuple3_get3(t)))
-   def fun[A1:Manifest,A2:Manifest,A3:Manifest,A4:Manifest,B:Manifest](f: (Rep[A1], Rep[A2], Rep[A3], Rep[A4]) => Rep[B]): Rep[((A1,A2,A3,A4))=>B] =
+  implicit def fun[A1:Manifest,A2:Manifest,A3:Manifest,A4:Manifest,B:Manifest](f: (Rep[A1], Rep[A2], Rep[A3], Rep[A4]) => Rep[B]): Rep[((A1,A2,A3,A4))=>B] =
     fun((t: Rep[(A1,A2,A3,A4)]) => f(tuple4_get1(t), tuple4_get2(t), tuple4_get3(t), tuple4_get4(t)))
-   def fun[A1:Manifest,A2:Manifest,A3:Manifest,A4:Manifest,A5:Manifest,B:Manifest](f: (Rep[A1], Rep[A2], Rep[A3], Rep[A4], Rep[A5]) => Rep[B]): Rep[((A1,A2,A3,A4,A5))=>B] =
+  implicit def fun[A1:Manifest,A2:Manifest,A3:Manifest,A4:Manifest,A5:Manifest,B:Manifest](f: (Rep[A1], Rep[A2], Rep[A3], Rep[A4], Rep[A5]) => Rep[B]): Rep[((A1,A2,A3,A4,A5))=>B] =
     fun((t: Rep[(A1,A2,A3,A4,A5)]) => f(tuple5_get1(t), tuple5_get2(t), tuple5_get3(t), tuple5_get4(t), tuple5_get5(t)))
 
   class LambdaOps2[A1:Manifest,A2:Manifest,B:Manifest](f: Rep[((A1,A2)) => B]) {
@@ -350,8 +350,8 @@ trait CGenFunctions extends CGenEffect with BaseGenFunctions {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case e@Lambda(fun, x, y) =>
       val retType = remap(getBlockResult(y).tp)
-      stream.println("function<"+retType+"("+
-    		  remap(x.tp)+")> "+quote(sym)+
+      val retTp = if (cppExplicitFunRet == "true") "function<"+retType+"("+remap(x.tp)+")>" else "auto"
+      stream.println(retTp+" "+quote(sym)+
     		  " = [&]("+remap(x.tp)+" "+quote(x)+") {")
       emitBlock(y)
       val z = getBlockResult(y)
@@ -378,8 +378,8 @@ trait CGenTupledFunctions extends CGenFunctions with GenericGenUnboxedTupleAcces
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case Lambda(fun, UnboxedTuple(xs), y) =>
       val retType = remap(getBlockResult(y).tp)
-      stream.println("function<"+retType+"("+
-    		  xs.map(s=>remap(s.tp)).mkString(",")+")> "+quote(sym)+
+      val retTp = if (cppExplicitFunRet == "true") "function<"+retType+"("+xs.map(s=>remap(s.tp)).mkString(",")+")>" else "auto"
+      stream.println(retTp+" "+quote(sym)+
     		  " = [&]("+xs.map(s=>remap(s.tp)+" "+quote(s)).mkString(",")+") {")
       emitBlock(y)
       val z = getBlockResult(y)

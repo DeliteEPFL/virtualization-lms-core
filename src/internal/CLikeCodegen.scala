@@ -1,4 +1,4 @@
-package scala.virtualization.lms
+package scala.lms
 package internal
 
 import java.io.PrintWriter
@@ -41,8 +41,12 @@ trait CLikeCodegen extends GenericCodegen {
   override def remap[A](m: Manifest[A]) : String = {
     if (m.erasure == classOf[Variable[AnyVal]])
       remap(m.typeArguments.head)
+    else if (m.erasure == classOf[List[Any]]) { // Use case: Delite Foreach sync list 
+      deviceTarget.toString + "List< " + remap(m.typeArguments.head) + " >"
+    }
     else {
       m.toString match {
+        case "scala.collection.immutable.List[Float]" => "List"
         case "Boolean" => "bool"
         case "Byte" => "int8_t"
         case "Char" => "uint16_t"
@@ -124,7 +128,15 @@ trait CLikeCodegen extends GenericCodegen {
     if(resultType != "void")
       stream.println("return " + syms.map(quote).mkString("") + ";")
     stream.println("}")
-
+/*
+    for(s <- syms++vals++vars) {
+      if(dsTypesList.contains(s.tp)) println("contains :" + remap(s.tp))
+      else println("not contains: " + remap(s.tp))
+    }
+    println(syms.map(quote).mkString("") + "adding dsTypesList:" + (syms++vals++vars).map(_.tp).mkString(","))
+    dsTypesList ++= (syms++vals++vars).map(_.tp)
+    println("dsTyps-lms:" + dsTypesList.map(remap(_)).mkString(",")) //toString)
+  */
     dsTypesList ++= (syms++vals++vars).map(s => (s.tp,remap(s.tp)))
   }
 
@@ -139,10 +151,19 @@ trait CLikeCodegen extends GenericCodegen {
     if(tpe == "void") true
     else false
   }
+
+  
+  def CLikeConsts(x:Exp[Any], s:String): String = {
+    s match {
+      case "Infinity" => "std::numeric_limits<%s>::max()".format(remap(x.tp))
+      case _ => super.quote(x)
+    }
+  }
   
   override def quote(x: Exp[Any]) = x match {
     case Const(s: Unit) => ""
     case Const(l: Long) => l.toString + "LL"
+    case Const(s: Float) => s+"f"
     case Const(null) => "NULL"
     case Const(z) if z.toString == "Infinity" => s"std::numeric_limits<${remap(x.tp)}>::infinity()"
     case _ => super.quote(x)

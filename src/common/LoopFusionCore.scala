@@ -1,4 +1,4 @@
-package scala.virtualization.lms
+package scala.lms
 package common
 
 /** Override these functions to get fusion for your loops. */

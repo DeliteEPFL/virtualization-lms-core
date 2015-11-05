@@ -1,4 +1,4 @@
-package scala.virtualization.lms
+package scala.lms
 package internal
 
 import util.GraphUtil
@@ -8,34 +8,31 @@ import scala.reflect.RefinedManifest
 trait GenericCodegen extends BlockTraversal {
   val IR: Expressions
   import IR._
-  
+
+  // TODO: should some of the methods be moved into more specific subclasses?
   /** these methods support a kernel model of execution and are only used by Delite, should be moved into Delite only? **/
   def deviceTarget: Targets.Value = throw new Exception("deviceTarget is not defined for this codegen.")
   def hostTarget: Targets.Value = Targets.getHostTarget(deviceTarget)
   def isAcceleratorTarget: Boolean = hostTarget != deviceTarget
-
-  def kernelInit(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultIsVar: Boolean): Unit = {}
+  
+  def fileExtension = ""
+  def emitFileHeader(): Unit = {}
   def emitKernel(syms: List[Sym[Any]], rhs: Any): Unit = { }
   def emitKernelHeader(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean, isMultiLoop: Boolean): Unit = {}
   def emitKernelFooter(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean, isMultiLoop: Boolean): Unit = {}
 
-  def emitTransferFunctions(): Unit = {}
-
   def resourceInfoType = ""
   def resourceInfoSym = ""
   
-  /******/
-
-  def fileExtension = ""
-  def emitFileHeader(): Unit = {}
-
-  def initializeGenerator(buildDir:String): Unit = { }
+  // Initializer
+  def initializeGenerator(buildDir:String, args: Array[String]): Unit = { }
   def finalizeGenerator(): Unit = {}
+  def kernelInit(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultIsVar: Boolean): Unit = {}
 
   def emitDataStructures(stream: PrintWriter): Unit = {}
   def emitDataStructures(path: String): Unit = {}
   def getDataStructureHeaders(): String = ""
-
+  def emitTransferFunctions(): Unit = {}
 
   def dataPath = {
     "data" + java.io.File.separator
@@ -56,6 +53,12 @@ trait GenericCodegen extends BlockTraversal {
     }
 
     stream.close()
+  }
+  
+  // exception handler
+  def exceptionHandler(e: Exception, outFile:File, kstream:PrintWriter): Unit = {
+      kstream.close()
+      outFile.delete
   }
 
   // optional type remapping (default is identity)
@@ -160,8 +163,10 @@ trait GenericCodegen extends BlockTraversal {
 
   def quote(x: Exp[Any]) : String = x match {
     case Const(s: String) => "\""+s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")+"\"" // TODO: more escapes?
-    case Const(f: Float) => f+"f"
     case Const(c: Char) => "'"+(""+c).replace("'", "\\'").replace("\n", "\\n")+"'"
+    case Const(f: Float) => "%1.10f".format(f) + "f"
+    case Const(l: Long) => l.toString + "L"
+    case Const(null) => "null"
     case Const(z) => z.toString
     case Sym(n) => "x"+n
     case _ => throw new RuntimeException("could not quote " + x)

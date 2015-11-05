@@ -1,4 +1,4 @@
-package scala.virtualization.lms
+package scala.lms
 package internal
 
 import java.io.{FileWriter, StringWriter, PrintWriter, File}
@@ -14,7 +14,7 @@ trait CudaCodegen extends GPUCodegen with CppHostTransfer with CudaDeviceTransfe
   override def toString = "cuda"
   override def devFuncPrefix = "__device__"
   
-  override def initializeGenerator(buildDir:String): Unit = {
+  override def initializeGenerator(buildDir:String, args: Array[String]): Unit = {
     val outDir = new File(buildDir)
     outDir.mkdirs
 
@@ -38,7 +38,7 @@ trait CudaCodegen extends GPUCodegen with CppHostTransfer with CudaDeviceTransfe
     headerStream.println(getDataStructureHeaders())
     headerStream.println("#include \"" + deviceTarget + "actRecords.h\"")
 
-    super.initializeGenerator(buildDir)
+    super.initializeGenerator(buildDir, args)
   }
 
   def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, out: PrintWriter) = {

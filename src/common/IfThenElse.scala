@@ -1,9 +1,9 @@
-package scala.virtualization.lms
+package scala.lms
 package common
 
 import java.io.PrintWriter
 import scala.reflect.SourceContext
-import scala.virtualization.lms.internal.{FatBlockTraversal, GenericNestedCodegen, GenericFatCodegen, GenerationFailedException}
+import scala.lms.internal.{FatBlockTraversal, GenericNestedCodegen, GenericFatCodegen, GenerationFailedException}
 
 trait IfThenElse extends Base {
   def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T])(implicit pos: SourceContext): Rep[T]
@@ -230,7 +230,7 @@ trait BaseGenIfThenElse extends GenericNestedCodegen {
   import IR._
 
 }
-
+// TODO dev - trait BaseGenIfThenElseFat extends BaseGenIfThenElse with GenericFatCodegen {
 trait BaseIfThenElseTraversalFat extends FatBlockTraversal {
   val IR: IfThenElseFatExp
   import IR._
@@ -436,14 +436,28 @@ trait CGenIfThenElse extends CGenEffect with BaseGenIfThenElse {
             emitBlock(b)
             stream.println("}")
           case _ =>
-            stream.println("%s %s;".format(remap(sym.tp),quote(sym)))
-            stream.println("if (" + quote(c) + ") {")
-            emitBlock(a)
-            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
-            stream.println("} else {")
-            emitBlock(b)
-            stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-            stream.println("}")
+            if (cppIfElseAutoRet == "true") {
+              val ten = quote(sym) + "True"
+              val fen = quote(sym) + "False"
+              def emitCondFun[T: Manifest](fname: String, block: Block[T]) {
+                stream.println("auto " + fname + " = [&]() {");
+                emitBlock(block)
+                stream.println("return " + quote(getBlockResult(block)) + ";")
+                stream.println("};")
+              }
+              emitCondFun(ten, a)
+              emitCondFun(fen, b) 
+              stream.println("auto " + quote(sym) + " = " + quote(c) + " ? " + ten + "() : " + fen + "();")
+            } else {
+              stream.println("%s %s;".format(remap(sym.tp),quote(sym)))
+              stream.println("if (" + quote(c) + ") {")
+              emitBlock(a)
+              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+              stream.println("} else {")
+              emitBlock(b)
+              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+              stream.println("}")
+            }
         }
         /*
         val booll = remap(sym.tp).equals("void")
