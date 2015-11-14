@@ -44,7 +44,8 @@ trait AtomicWrites extends EffectExp {
 
   // Filled in by Structs.scala, Variables.scala, and DeliteArray.scala
   // (and DeliteMultiArray.scala)
-  def recurseLookup[T:Manifest](sym: Exp[Any], trace: List[AtomicTracer]): (Exp[Any],List[AtomicTracer]) = {
+  // FIXME removed [T:Typ] T not used?
+  def recurseLookup(sym: Exp[Any], trace: List[AtomicTracer]): (Exp[Any],List[AtomicTracer]) = {
     (sym,trace)
   }
 
@@ -62,23 +63,23 @@ trait AtomicWrites extends EffectExp {
      * TODO: Better name for this?
      */
     def externalFields: List[Any]
-    val mA: Manifest[A]
+    val mA: Typ[A]
   }
 
   /**
    * Abstract atomic write node.
    */
-  abstract class AtomicWriteDef[A:Manifest] extends AtomicWrite[A] {
-    val mA = manifest[A]
+  abstract class AtomicWriteDef[A:Typ] extends AtomicWrite[A] {
+    val mA = typ[A]
   }
 
   // mirroring
-  def mirrorNestedAtomic[A:Manifest](d: AtomicWrite[A], f: Transformer)(implicit ctx: SourceContext): AtomicWrite[A] = d match {
+  def mirrorNestedAtomic[A:Typ](d: AtomicWrite[A], f: Transformer)(implicit ctx: SourceContext): AtomicWrite[A] = d match {
     case _ => sys.error("No mirror atomic rule found for " + d)
   }
 
   // Version of reflectEffect used for Atomic Writes
-  def reflectAtomicWrite[A:Manifest](sym: Exp[Any])(d: AtomicWrite[A])(implicit ctx: SourceContext): Exp[Unit] = {
+  def reflectAtomicWrite[A:Typ](sym: Exp[Any])(d: AtomicWrite[A])(implicit ctx: SourceContext): Exp[Unit] = {
     val (outerSym, trace) = recurseLookup(sym, Nil)
     val outerDef = if (trace.isEmpty) { d } else { NestedAtomicWrite[A](outerSym, trace, d.asNested) }
     reflectWrite(outerSym)(outerDef)
@@ -93,18 +94,18 @@ trait AtomicWrites extends EffectExp {
    * structure being updated. The first element in the tracer list should contain the
    * outer data structure being written to
    */
-  case class NestedAtomicWrite[A:Manifest](sym: Exp[Any], trace: List[AtomicTracer], d: AtomicWrite[A])(implicit ctx: SourceContext) extends Def[Unit] {
+  case class NestedAtomicWrite[A:Typ](sym: Exp[Any], trace: List[AtomicTracer], d: AtomicWrite[A])(implicit ctx: SourceContext) extends Def[Unit] {
     private lazy val deps = trace.flatMap{t => t.productIterator.toList} ::: List(sym, d)
     override def productIterator = deps.iterator
     override def productElement(n: Int) = deps(n)
     override def productArity = deps.length
-    val mA = manifest[A]
+    val mA = typ[A]
   }
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+  override def mirror[A:Typ](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case op: AtomicWrite[_] if op.isNested => sys.error("Shouldn't be mirroring a nested write!")
-    case Reflect(NestedAtomicWrite(s,t,d), u, es) =>
-      reflectMirrored(Reflect(NestedAtomicWrite(f(s),t.map{r => mirrorTrace(r,f)}, mirrorNestedAtomic(d,f).asNested)(mtype(manifest[A]),ctx), mapOver(f,u), f(es)))(mtype(manifest[Unit]), ctx)
+    case Reflect(e@NestedAtomicWrite(s,t,d), u, es) =>
+      reflectMirrored(Reflect(NestedAtomicWrite(f(s),t.map{r => mirrorTrace(r,f)}, mirrorNestedAtomic(d,f)(e.mA, ctx).asNested)(mtype(manifest[A]),ctx), mapOver(f,u), f(es)))(mtype(manifest[Unit]), ctx)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 

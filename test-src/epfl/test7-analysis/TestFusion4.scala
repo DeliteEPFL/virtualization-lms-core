@@ -10,16 +10,19 @@ import scala.reflect.SourceContext
 
 import java.io.{PrintWriter,StringWriter,FileOutputStream}
 
-
+// TODO refactor Arith with PrimitiveOps
 trait MyFusionProgArith extends Arith with ArrayLoopsMC with Print with OrderingOps {
 //with PrimitiveOps with LiftNumeric with BooleanOps {
   def test(x: Rep[Int]): Rep[Unit]
 }
 
-trait ImplArith extends MyFusionProgArith with ArithExp  with ArrayLoopsMCFatExp with ArrayLoopsMCFusionExtractors
+trait ImplArith extends MyFusionProgArith with ArithExp with ArrayLoopsMCFatExp with ArrayLoopsMCFusionExtractors
     with IfThenElseFatExp with PrintExp with OrderingOpsExp
 //    with NumericOpsExp with PrimitiveOpsExp with BooleanOpsExp
     with LoopFusionCore { self =>
+  implicit override def intTyp: Typ[Int] = super[ArithExp].intTyp
+  implicit override def doubleTyp: Typ[Double] = super[ArithExp].doubleTyp
+
   override val verbosity = 2 // 1: only printlog, 2: also printdbg
   val runner = new RunnerArith { val p: self.type = self }
   runner.run()
@@ -36,6 +39,7 @@ trait FusionCodegenArith extends CodegenArith with CombineTTPScheduling { val IR
 trait RunnerArith {
   val p: ImplArith
   def run() = {
+    import p.{intTyp,unitTyp}
     val x = p.fresh[Int]
     val y = p.reifyEffects(p.test(x))
 

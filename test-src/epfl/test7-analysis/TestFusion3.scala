@@ -36,6 +36,7 @@ trait Runner /*extends internal.ScalaCompile*/ {
   val p: Impl
 
   def run() = {
+    import p.{intTyp,unitTyp}
     val x = p.fresh[Int]
     val y = p.reifyEffects(p.test(x))
 
@@ -112,17 +113,17 @@ trait Runner /*extends internal.ScalaCompile*/ {
 }
 
 trait PrintX extends Base {
-  def printX[T:Manifest](s: Rep[T]): Rep[T]
+  def printX[T:Typ](s: Rep[T]): Rep[T]
 }
 
 trait PrintXExp extends Print with EffectExp {
-  case class PrintX[T:Manifest](s: Rep[T]) extends Def[T]
-  def printX[T:Manifest](s: Rep[T]) = reflectEffect(PrintX(s))
-  override def mirrorDef[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = (e match {
+  case class PrintX[T:Typ](s: Rep[T]) extends Def[T]
+  def printX[T:Typ](s: Rep[T]) = reflectEffect(PrintX(s))
+  override def mirrorDef[A:Typ](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = (e match {
     case PrintX(s) => PrintX(f(s))
     case _ => super.mirrorDef(e,f)
   }).asInstanceOf[Def[A]] // why??
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
+  override def mirror[A:Typ](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case Reflect(PrintX(s), u, es) => reflectMirrored(Reflect(PrintX(f(s)), mapOver(f,u), f(es)))(mtype(manifest[A]), pos)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]] // why??

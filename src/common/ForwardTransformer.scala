@@ -8,7 +8,8 @@ trait ForwardTransformer extends internal.AbstractSubstTransformer with internal
   val IR: BaseFatExp with EffectExp //LoopsFatExp with IfThenElseFatExp
   import IR._
   
-  def transformBlock[A:Manifest](block: Block[A]): Block[A] = {
+  def transformBlock[A](block: Block[A]): Block[A] = {
+    implicit val tp = getBlockResult(block).tp
     reifyEffects {
       reflectBlock(block)
     }
@@ -16,7 +17,7 @@ trait ForwardTransformer extends internal.AbstractSubstTransformer with internal
 
   override def hasContext = true
   
-  override def apply[A:Manifest](xs: Block[A]): Block[A] = transformBlock(xs)
+  override def apply[A](xs: Block[A]): Block[A] = transformBlock(xs)
 
   // perform only one step of lookup, otherwise we confuse things: 
   // TODO: should this be changed in AbstractSubstTransformer, too?
@@ -95,7 +96,7 @@ trait ForwardTransformer extends internal.AbstractSubstTransformer with internal
 trait RecursiveTransformer extends ForwardTransformer { self =>
   import IR._
 
-  def run[A:Manifest](s: Block[A]): Block[A] = {
+  def run[A:Typ](s: Block[A]): Block[A] = {
     transformBlock(s)
   }
 
@@ -131,15 +132,18 @@ trait RecursiveTransformer extends ForwardTransformer { self =>
   }
 }
 
+// TODO not in develop-1.0.x
 /** 
  * Delite transformers are run in a fixpoint fashion, but with a limited number of iterations.
  * At the beginning of each iteration, the info string is printed to the log.
  */
 trait FixpointTransformer extends ForwardTransformer {
+  import IR._
+
   def getInfoString: String
   def isDone: Boolean
-  def runOnce[A:Manifest](s: Block[A]): Block[A]
-  def run[A:Manifest](s: Block[A]): Block[A] = {
+  def runOnce[A:Typ](s: Block[A]): Block[A]
+  def run[A:Typ](s: Block[A]): Block[A] = {
     if (isDone) s else run(runOnce(s))
   }
 }
@@ -202,11 +206,14 @@ trait WorklistTransformer extends FixpointTransformer { // need backward version
     }
   }
   override def isDone = nextSubst.isEmpty
-  override def runOnce[A:Manifest](s: Block[A]): Block[A] = {
+  override def runOnce[A:Typ](s: Block[A]): Block[A] = {
     subst = Map.empty
     curSubst = nextSubst
     nextSubst = Map.empty
     transformBlock(s)
+  }
+  override def run[A:Typ](s: Block[A]): Block[A] = {
+    if (isDone) s else run(runOnce(s))
   }
   override def transformStm(stm: Stm): Exp[Any] = stm match {
     case TP(sym, rhs) => 

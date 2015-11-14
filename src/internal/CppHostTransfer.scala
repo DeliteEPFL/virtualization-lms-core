@@ -9,7 +9,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
   // NOTE: strings are in general treated as primitive types to avoid the memory management,
   //       but for transfer functions strings must be treated separately from primitive types
 
-  def emitMakeManifest(tp: Manifest[_]): (String,String) = {
+  def emitMakeManifest(tp: Typ[_]): (String,String) = {
     if (remap(tp) == "string") {
       val out = new StringBuilder
       val signature = "jobject makeManifest_%s(JNIEnv *env)".format(mangledName(remapHost(tp)))
@@ -37,7 +37,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
       throw new GenerationFailedException("CppHostTransfer: Unknown type to make manifest: " + tp.toString)
   }
 
-  def emitSend(tp: Manifest[_], peer: Targets.Value): (String,String) = {
+  def emitSend(tp: Typ[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
       if (remap(tp) == "string") {
         val out = new StringBuilder
@@ -76,7 +76,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
     }
   }
 
-  def emitRecv(tp: Manifest[_], peer: Targets.Value): (String,String) = {
+  def emitRecv(tp: Typ[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
       if (remap(tp) == "string") {
         val out = new StringBuilder
@@ -121,7 +121,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
     }
   }
 
-  def emitSendView(tp: Manifest[_], peer: Targets.Value): (String,String) = {
+  def emitSendView(tp: Typ[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
       if (remap(tp) == "string") {
         val out = new StringBuilder
@@ -162,7 +162,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
     }
   }
 
-  def emitRecvView(tp: Manifest[_], peer: Targets.Value): (String,String) = {
+  def emitRecvView(tp: Typ[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
       if (remap(tp) == "string") {
         val out = new StringBuilder
@@ -203,7 +203,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
     }
   }
 
-  def emitSendUpdate(tp: Manifest[_], peer: Targets.Value): (String,String) = {
+  def emitSendUpdate(tp: Typ[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
       if(isPrimitiveType(tp)) {
         val out = new StringBuilder
@@ -241,7 +241,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
     }
   }
 
-  def emitRecvUpdate(tp: Manifest[_], peer: Targets.Value): (String,String) = {
+  def emitRecvUpdate(tp: Typ[_], peer: Targets.Value): (String,String) = {
     if (peer == Targets.JVM) {
       if (remap(tp) == "string") {
         val out = new StringBuilder
@@ -279,7 +279,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
     }
   }
 
-  def JNIType[A](m: Manifest[A]) : String = {
+  def JNIType[A](m: Typ[A]) : String = {
     remap(m) match {
       case "bool" => "jboolean"
       case "int8_t" => "jbyte"
@@ -293,7 +293,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
     }
   }
 
-  def remapToJNI[A](m: Manifest[A]) : String = {
+  def remapToJNI[A](m: Typ[A]) : String = {
     remap(m) match {
       case "bool" => "Boolean"
       case "int8_t" => "Byte"
@@ -307,7 +307,7 @@ trait CppHostTransfer extends AbstractHostTransfer {
     }
   }
 
-  def JNITypeDescriptor[A](m: Manifest[A]) : String = JNITypeDescriptor(m.toString)
+  def JNITypeDescriptor[A](m: Typ[A]) : String = JNITypeDescriptor(m.toString)
   def JNITypeDescriptor(tp: String): String = tp match {
     case "Boolean" => "Z"
     case "Byte" => "B"

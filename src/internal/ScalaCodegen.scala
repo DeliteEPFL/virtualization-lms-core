@@ -18,9 +18,9 @@ trait ScalaCodegen extends GenericCodegen with Config {
   override def resourceInfoType = "generated.scala.ResourceInfo"
   override def resourceInfoSym = "resourceInfo"
 
-  def emitSource[A : Manifest](args: List[Sym[_]], body: Block[A], className: String, out: PrintWriter) = {
+  def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], className: String, out: PrintWriter) = {
 
-    val sA = remap(manifest[A])
+    val sA = remap(typ[A])
 
     val staticData = getFreeDataBlock(body)
 

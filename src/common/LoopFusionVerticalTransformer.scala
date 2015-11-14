@@ -393,7 +393,7 @@ trait LoopFusionVerticalTransformer extends PreservingFixpointTransformer {
   def getInfoString = "LoopFusionVerticalTransformer only runs once, TODO fixpoint"
   var hasRunOnce = false
   def isDone = hasRunOnce
-  def runOnce[A:Manifest](s: Block[A]): Block[A] = {
+  def runOnce[A:	Typ](s: Block[A]): Block[A] = {
     val newBlock = if (shouldDoFusion) transformBlock(s) else s
     hasRunOnce = true
     newBlock
@@ -463,6 +463,7 @@ trait LoopFusionVerticalTransformer extends PreservingFixpointTransformer {
 
       /* Transform loops - they might be a producer, consumer or both. */
       case TP(sym, LoopOrReflectedLoop(loop, effects)) =>
+        implicit def anyTyp: Typ[Any] = ManifestTyp(implicitly) // FIXME
         transformLoop(stm, sym, loop, effects)
 
       /* Track other types of producers. */
@@ -496,11 +497,13 @@ trait LoopFusionVerticalTransformer extends PreservingFixpointTransformer {
     *   execute the fusion, using recursion to deconstruct the problem.
     * - {@code doFusion}: executes the fusion through mirroring, this function
     *   thus already has all the information and won't abort and roll back. */
-  def transformLoop[A:Manifest, B](stm: Stm, sym: Sym[A], loop: AbstractLoop[B], 
+  def transformLoop[A:Typ, B](stm: Stm, sym: Sym[A], loop: AbstractLoop[B],
       effects: LoopEffects): Exp[Any] = {
 
     printlog("")
     seenLoops += sym
+
+    implicit def anyTyp: Typ[Any] = ManifestTyp(implicitly) // FIXME
     val (fusionInfo, effectful) = findProducers(sym, loop, loop.size, loop.v, loop.body, effects)
     fusionInfo.printLogBefore
 
@@ -541,7 +544,7 @@ trait LoopFusionVerticalTransformer extends PreservingFixpointTransformer {
     * The list of all candidates is then passed to {@code combineProducers} to
     * retain only the ones that are compatible if there are multiple producers.
     */
-  def findProducers[A:Manifest](cSym: Sym[A], cLoop: AbstractLoop[_], cShape: Exp[Int],
+  def findProducers[A:Typ](cSym: Sym[A], cLoop: AbstractLoop[_], cShape: Exp[Int],
       cIndex: Sym[Int], cBody: Def[A], cEffects: LoopEffects): (FusionInfo, Boolean) = {
 
     /* Get all the statements of the consumer loop body, which necessarily
@@ -614,7 +617,7 @@ trait LoopFusionVerticalTransformer extends PreservingFixpointTransformer {
 
   /** Prunes the producer candidates and creates the FusionInfo containing all
     * compatible fusions. */
-  def combineProducers[A:Manifest](cSym: Sym[A], cDef: Either[Def[A], AbstractLoop[_]],
+  def combineProducers[A:Typ](cSym: Sym[A], cDef: Either[Def[A], AbstractLoop[_]],
       prodCandidates: List[(Sym[Any], Sym[Any], ProdType, Boolean)],
       notFused: List[(Sym[Any], String)], outerIndex: Option[Sym[Int]],
       outerSISyms: Option[SISyms], remapReduceToMc: Option[Sym[Any]]): (FusionInfo, Boolean) = {
@@ -625,6 +628,7 @@ trait LoopFusionVerticalTransformer extends PreservingFixpointTransformer {
     // Process the different types of producers and their combinations with
     // consumers.
 
+    implicit def anyTyp: Typ[Any] = ManifestTyp(implicitly) // FIXME EmptyCollNewEmpty needs it
     def processEmptyProducer(empty: Def[Any], newPSym: Sym[Any]) = (cDef, remapReduceToMc.isDefined) match {
 
       // empty + Mc -> empty of consumer type

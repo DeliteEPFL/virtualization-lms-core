@@ -9,7 +9,7 @@ trait LoopFusionExtractors extends internal.Expressions with LoopsExp {
   def unapplyFixedDomain(e: Def[Any]): Option[Exp[Int]] = None
 
   def unapplyEmptyColl(a: Def[Any]): Boolean = false
-  def unapplyEmptyCollNewEmpty[T:Manifest](a: (Def[Any], Exp[T], Option[Sym[Int]])): Option[Exp[T]] = None
+  def unapplyEmptyCollNewEmpty[T:Typ](a: (Def[Any], Exp[T], Option[Sym[Int]])): Option[Exp[T]] = None
 
   def unapplySingletonColl(a: Def[Any]): Option[Exp[Any]] = None
 
@@ -52,7 +52,7 @@ trait LoopFusionCore extends LoopFusionExtractors with BaseFatExp with LoopsFatE
     def unapply(a: Def[Any]): Boolean = unapplyEmptyColl(a) 
   }
   object EmptyCollNewEmpty {
-    def unapply[T:Manifest](a: (Def[Any], Exp[T], Option[Sym[Int]])): Option[Exp[T]] = unapplyEmptyCollNewEmpty(a) 
+    def unapply[T:Typ](a: (Def[Any], Exp[T], Option[Sym[Int]])): Option[Exp[T]] = unapplyEmptyCollNewEmpty(a)
   }
 
   object SingletonColl {

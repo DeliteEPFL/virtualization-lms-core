@@ -16,24 +16,27 @@ import java.io.{PrintWriter,StringWriter,FileOutputStream}
 
 
 trait ArrayLoopsMC extends Loops with OverloadHack {
-  def emptyArray[T:Manifest](): Rep[Array[T]]
-  def singleton[T:Manifest](elem: Rep[T]): Rep[Array[T]]
-  def array[T:Manifest](shape: Rep[Int])(f: Rep[Int] => Rep[T]): Rep[Array[T]]
+  implicit def arrayTyp[T:Typ]: Typ[Array[T]]
+
+  def emptyArray[T:Typ](): Rep[Array[T]]
+  def singleton[T:Typ](elem: Rep[T]): Rep[Array[T]]
+  def array[T:Typ](shape: Rep[Int])(f: Rep[Int] => Rep[T]): Rep[Array[T]]
   def sum(shape: Rep[Int])(f: Rep[Int] => Rep[Int]): Rep[Int]
   def sumD(shape: Rep[Int])(f: Rep[Int] => Rep[Double]): Rep[Double]
-  def reduce[T:Manifest](shape: Rep[Int])(valFunc: Rep[Int] => Rep[Array[T]], 
+  def reduce[T:Typ](shape: Rep[Int])(valFunc: Rep[Int] => Rep[Array[T]],
     redFunc: (Rep[T], Rep[T]) => Rep[T], zero: Rep[T]): Rep[T]
-  def arrayIf[T:Manifest](shape: Rep[Int])(cond: Rep[Int] => Rep[Boolean], f: Rep[Int] => Rep[T]): Rep[Array[T]]
-  def flatten[T:Manifest](shape: Rep[Int])(f: Rep[Int] => Rep[Array[T]]): Rep[Array[T]]
-  def foreach2[T:Manifest](shape: Rep[Int])(f: Rep[Int] => Rep[Unit]): Rep[Unit]
+  def arrayIf[T:Typ](shape: Rep[Int])(cond: Rep[Int] => Rep[Boolean], f: Rep[Int] => Rep[T]): Rep[Array[T]]
+  def flatten[T:Typ](shape: Rep[Int])(f: Rep[Int] => Rep[Array[T]]): Rep[Array[T]]
+  def foreach2(shape: Rep[Int])(f: Rep[Int] => Rep[Unit]): Rep[Unit]
 
-  def infix_at[T:Manifest](a: Rep[Array[T]], i: Rep[Int]): Rep[T]
-  def infix_length[T:Manifest](a: Rep[Array[T]]): Rep[Int]
-  def infix_foreach[T:Manifest](a: Rep[Array[T]], f: Rep[T] => Rep[Unit]): Rep[Unit]
+  def infix_at[T:Typ](a: Rep[Array[T]], i: Rep[Int]): Rep[T]
+  def infix_length[T:Typ](a: Rep[Array[T]]): Rep[Int]
+  def infix_foreach[T:Typ](a: Rep[Array[T]], f: Rep[T] => Rep[Unit]): Rep[Unit]
 }
 
 
 trait ArrayLoopsMCExp extends LoopsExp with EffectExp with IfThenElseExp with NumericOpsExp with PrimitiveOpsExp {
+  implicit def arrayTyp[T:Typ]: Typ[Array[T]] = typ[T].arrayTyp
 
   // Keep generated arrays from being lifted out of loop when used in MultiCollect(IfThenElse(cond, thenp, empty))
   object SuperEmptyArray {
@@ -71,18 +74,18 @@ trait ArrayLoopsMCExp extends LoopsExp with EffectExp with IfThenElseExp with Nu
 
   // use one symbol per type, like this arrays of same type are CSE'd
   val typeMap = new HashMap[String, Sym[Any]]()
-  def getDummy[T:Manifest](): Sym[T] = { typeMap.getOrElseUpdate(manifest[T].toString, fresh[T]).asInstanceOf[Sym[T]] }
+  def getDummy[T:Typ](): Sym[T] = { typeMap.getOrElseUpdate(manifest[T].toString, fresh[T]).asInstanceOf[Sym[T]] }
 
-  def emptyArray[T:Manifest](): Rep[Array[T]] = EmptyArray(getDummy[T]())
-  def emptyArrayInLoop[T:Manifest](index: Exp[Int]): Rep[Array[T]] = EmptyArrayInLoop(index, getDummy[T]())
+  def emptyArray[T:Typ](): Rep[Array[T]] = EmptyArray(getDummy[T]())
+  def emptyArrayInLoop[T:Typ](index: Exp[Int]): Rep[Array[T]] = EmptyArrayInLoop(index, getDummy[T]())
   
-  def singleton[T:Manifest](elem: Rep[T]): Rep[Array[T]] = Singleton(elem)
-  def singletonInLoop[T:Manifest](elem: Rep[T], index: Exp[Int]): Rep[Array[T]] = elem match {
+  def singleton[T:Typ](elem: Rep[T]): Rep[Array[T]] = Singleton(elem)
+  def singletonInLoop[T:Typ](elem: Rep[T], index: Exp[Int]): Rep[Array[T]] = elem match {
     case `index` => Singleton(elem)
     case _ => SingletonInLoop(elem, index)
   }
 
-  def array[T:Manifest](shape: Rep[Int])(f: Rep[Int] => Rep[T]): Rep[Array[T]] = {
+  def array[T:Typ](shape: Rep[Int])(f: Rep[Int] => Rep[T]): Rep[Array[T]] = {
     val x = fresh[Int]
     val m = reifyEffectsHere(singletonInLoop(f(x), x))
     val mEff = summarizeEffects(m)
@@ -110,7 +113,7 @@ trait ArrayLoopsMCExp extends LoopsExp with EffectExp with IfThenElseExp with Nu
     reflectEffect(SimpleLoop(shape, x, MultiReduceElem[Double](y, reduceFun, unit(0.0), accSym, valSym)), (yEff.star andThen (rEff.star)).star)
   }
 
-  def reduce[T:Manifest](shape: Rep[Int])(valFunc: Rep[Int] => Rep[Array[T]], 
+  def reduce[T:Typ](shape: Rep[Int])(valFunc: Rep[Int] => Rep[Array[T]],
     redFunc: (Rep[T], Rep[T]) => Rep[T], zero: Rep[T]): Rep[T] = {
     val x = fresh[Int]
     val y = reifyEffectsHere(valFunc(x))
@@ -123,7 +126,7 @@ trait ArrayLoopsMCExp extends LoopsExp with EffectExp with IfThenElseExp with Nu
   }
 
   // TODO test effects are routed correctly
-  def arrayIf[T:Manifest](shape: Rep[Int])(cond: Rep[Int] => Rep[Boolean], f: Rep[Int] => Rep[T]): Rep[Array[T]] = {
+  def arrayIf[T:Typ](shape: Rep[Int])(cond: Rep[Int] => Rep[Boolean], f: Rep[Int] => Rep[T]): Rep[Array[T]] = {
     val x = fresh[Int]
 
     val ifthenelse = reifyEffectsHere(__ifThenElse(cond(x), singletonInLoop(f(x), x), EmptyArrayInLoop[T](x, fresh[T])))
@@ -146,21 +149,21 @@ trait ArrayLoopsMCExp extends LoopsExp with EffectExp with IfThenElseExp with Nu
   //   reflectEffect(SimpleLoop(shape, x, ReduceIfElem(c,y)), yEff.star) 
   // }
 
-  def flatten[T:Manifest](shape: Rep[Int])(f: Rep[Int] => Rep[Array[T]]): Rep[Array[T]] = {
+  def flatten[T:Typ](shape: Rep[Int])(f: Rep[Int] => Rep[Array[T]]): Rep[Array[T]] = {
     val x = fresh[Int]
     val y = reifyEffectsHere(f(x))
     val yEff = summarizeEffects(y)
     reflectEffect(SimpleLoop(shape, x, MultiArrayElem(y)), yEff.star) 
   }
 
-  def infix_at[T:Manifest](a: Rep[Array[T]], i: Rep[Int]): Rep[T] = ArrayIndex(a, i)
+  def infix_at[T:Typ](a: Rep[Array[T]], i: Rep[Int]): Rep[T] = ArrayIndex(a, i)
 
-  def infix_length[T:Manifest](a: Rep[Array[T]]): Rep[Int] = a match {
+  def infix_length[T:Typ](a: Rep[Array[T]]): Rep[Int] = a match {
 //    case Def(SimpleLoop(s, x, ArrayElem(y))) => s
     case _ => ArrayLength(a)
   }
   
-  def infix_foreach[T:Manifest](a: Rep[Array[T]], f: Rep[T] => Rep[Unit]): Rep[Unit] = {
+  def infix_foreach[T:Typ](a: Rep[Array[T]], f: Rep[T] => Rep[Unit]): Rep[Unit] = {
     val x = fresh[Int]
     val ax = infix_at(a, x)
     val y = reifyEffectsHere(f(ax))
@@ -168,7 +171,7 @@ trait ArrayLoopsMCExp extends LoopsExp with EffectExp with IfThenElseExp with Nu
     reflectEffect(SimpleLoop(infix_length(a), x, ForeachElem(y)), yEff.star)
   }
 
-  def foreach2[T:Manifest](shape: Rep[Int])(f: Rep[Int] => Rep[Unit]): Rep[Unit] = {
+  def foreach2(shape: Rep[Int])(f: Rep[Int] => Rep[Unit]): Rep[Unit] = {
     val x = fresh[Int]
     val y = reifyEffectsHere(f(x))
     val yEff = summarizeEffects(y)
@@ -183,7 +186,7 @@ trait ArrayLoopsMCExp extends LoopsExp with EffectExp with IfThenElseExp with Nu
     case _ => super.boundSyms(e)
   }
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
+  override def mirror[A:Typ](e: Def[A], f: Transformer)(implicit pos: SourceContext): Exp[A] = (e match {
     case Reflect(SimpleLoop(s, i, body), u, es) =>
       // First process body, otherwise shape or index could take onceSubst
       val newBody = mirrorFatDef(body, f)
@@ -205,7 +208,7 @@ trait ArrayLoopsMCExp extends LoopsExp with EffectExp with IfThenElseExp with Nu
   }).asInstanceOf[Exp[A]]
 
 
-  override def mirrorFatDef[A:Manifest](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = (e match {
+  override def mirrorFatDef[A:Typ](e: Def[A], f: Transformer)(implicit pos: SourceContext): Def[A] = (e match {
     case ForeachElem(y) => ForeachElem(reifyEffectsHere(f.reflectBlock(y))(mtype(manifest[A])))
     case MultiArrayElem(y) => MultiArrayElem(reifyEffectsHere(f.reflectBlock(y))(mtype(manifest[A])))
     
@@ -242,7 +245,7 @@ trait ScalaGenArrayLoopsMCFat extends ScalaGenLoopsFat {
     case _ => super.emitNode(sym, rhs)
   }
 
-  def arrBuilderType[T](tp: Manifest[T]) = 
+  def arrBuilderType[T](tp: Typ[T]) =
     if (tp.typeArguments.isEmpty) {
       "ERROR: cannot build array of type " + tp
     } else if (isPrimitiveType(tp.typeArguments(0))) {
@@ -379,7 +382,7 @@ trait ArrayLoopsMCFusionExtractors extends ArrayLoopsMCFatExp with LoopFusionExt
     case SuperEmptyArray() => true
     case _ => super.unapplyEmptyColl(a)
   }
-  override def unapplyEmptyCollNewEmpty[T:Manifest](a: (Def[Any], Exp[T], Option[Sym[Int]])): Option[Exp[T]] = a match {
+  override def unapplyEmptyCollNewEmpty[T:Typ](a: (Def[Any], Exp[T], Option[Sym[Int]])): Option[Exp[T]] = a match {
     case (SuperEmptyArray(), b, None) => 
       Some(emptyArray()(mtype(b.tp.typeArguments(0))).asInstanceOf[Exp[T]])
     case (SuperEmptyArray(), b, Some(index)) => 

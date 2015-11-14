@@ -23,7 +23,7 @@ trait CCodegen extends CLikeCodegen with CppHostTransfer {
   override def resourceInfoType = "resourceInfo_t"
   override def resourceInfoSym = "resourceInfo"
 
-  override def remap[A](m: Manifest[A]) : String = {
+  override def remap[A](m: Typ[A]) : String = {
     m.toString match {
       case "java.lang.String" => "string"
       case _ if (m.erasure == classOf[scala.collection.mutable.HashMap[Any,Any]]) && isPrimitiveType(m.typeArguments(0)) && isPrimitiveType(m.typeArguments(1)) =>
@@ -46,7 +46,7 @@ trait CCodegen extends CLikeCodegen with CppHostTransfer {
     case _ => super.quote(x)
   }
 
-  override def isPrimitiveType[A](m: Manifest[A]) : Boolean = isPrimitiveType(remap(m))
+  override def isPrimitiveType[A](m: Typ[A]) : Boolean = isPrimitiveType(remap(m))
 
   override def emitValDef(sym: Sym[Any], rhs: String): Unit = {
     if (!isVoidType(sym.tp))
@@ -110,13 +110,13 @@ trait CCodegen extends CLikeCodegen with CppHostTransfer {
     super.initializeGenerator(buildDir, args)
   }
 
-  def emitForwardDef[A:Manifest](args: List[Manifest[_]], functionName: String, out: PrintWriter) = {
-    out.println(remap(manifest[A])+" "+functionName+"("+args.map(a => remap(a)).mkString(", ")+");")
+  def emitForwardDef[A:Typ](args: List[Typ[_]], functionName: String, out: PrintWriter) = {
+    out.println(remap(typ[A])+" "+functionName+"("+args.map(a => remap(a)).mkString(", ")+");")
   }
       
-  def emitSource[A:Manifest](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
+  def emitSource[A:Typ](args: List[Sym[_]], body: Block[A], functionName: String, out: PrintWriter) = {
 
-    val sA = remap(manifest[A])
+    val sA = remap(typ[A])
 
     withStream(out) {
       stream.println("/*****************************************\n"+
@@ -216,6 +216,15 @@ trait CCodegen extends CLikeCodegen with CppHostTransfer {
   }
 
   def kernelName = "kernel_" + kernelOutputs.map(quote).mkString("")
+
+  // FIXME just a forward - remove?
+//  override def emitKernelHeader(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean, isMultiLoop: Boolean): Unit = {
+//    super.emitKernelHeader(syms, vals, vars, resultType, resultIsVar, external, isMultiLoop)
+//  }
+//
+//  override def emitKernelFooter(syms: List[Sym[Any]], vals: List[Sym[Any]], vars: List[Sym[Any]], resultType: String, resultIsVar: Boolean, external: Boolean, isMultiLoop: Boolean): Unit = {
+//    super.emitKernelFooter(syms, vals, vars, resultType, resultIsVar, external, isMultiLoop)
+//  }
 
 }
 

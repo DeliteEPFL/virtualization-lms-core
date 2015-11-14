@@ -8,7 +8,7 @@ import scala.annotation.unchecked.uncheckedVariance
 
 trait Blocks extends Expressions {
 
-  case class Block[+T](val res: Exp[T]) { def tp: Manifest[T @uncheckedVariance] = res.tp } // variance ...
+  case class Block[+T](val res: Exp[T]) { def tp: Typ[T @uncheckedVariance] = res.tp } // variance ...
 
   def blocks(e: Any): List[Block[Any]] = e match {
     case b: Block[Any] => List(b)
@@ -248,7 +248,7 @@ trait Effects extends Expressions with Blocks with Utils {
   }
 
 
-  def isPrimitiveType[T](m: Manifest[T]) = m.toString match {
+  def isPrimitiveType[T](m: Typ[T]) = m.toString match {
     case "Byte" | "Char" | "Short" | "Int" | "Long" | "Float" | "Double" | "Boolean" | "Unit" => true
     case _ => false
   }
@@ -352,7 +352,7 @@ trait Effects extends Expressions with Blocks with Utils {
     of course this is unsafe in general but there might be cases that are definitely save.
   */
 
-  protected override implicit def toAtom[T:Manifest](d: Def[T])(implicit pos: SourceContext): Exp[T] = {
+  protected override implicit def toAtom[T:Typ](d: Def[T])(implicit pos: SourceContext): Exp[T] = {
 /*
     are we depending on a variable or mutable object? then we need to be serialized -> effect
 
@@ -365,8 +365,8 @@ trait Effects extends Expressions with Blocks with Utils {
         createReflectDefinition  // if summary is not pure
 */
     // warn if type is Any. TODO: make optional, sometimes Exp[Any] is fine
-    if (manifest[T] == manifest[Any]) printlog("warning: possible missing mtype call - toAtom with Def of type Any " + d)
-
+    if (typ[T] == ManifestTyp(manifest[Any])) printlog("warning: possible missing mtype call - toAtom with Def of type Any " + d)
+    
     // AKS NOTE: this was removed on 6/27/12, but it is still a problem in OptiML apps without it,
     // so I'm putting it back until we can get it resolved properly.
     d match {
@@ -375,15 +375,16 @@ trait Effects extends Expressions with Blocks with Utils {
         // specifically, if we return the reified version of a mutable bound var, we get a Reflect(Reify(..)) error, e.g. mutable Sum
         // printlog("ignoring read of Reify(): " + d)
         super.toAtom(d)
+      case _ if conditionalScope && addControlDeps => reflectEffect(d, Control())
       case _ => reflectEffect(d, Pure())
     }
     // reflectEffect(d, Pure())
   }
 
-  def reflectMirrored[A:Manifest](zd: Reflect[A])(implicit pos: SourceContext): Exp[A] = {
+  def reflectMirrored[A:Typ](zd: Reflect[A])(implicit pos: SourceContext): Exp[A] = {
     checkContext()
     // warn if type is Any. TODO: make optional, sometimes Exp[Any] is fine
-    if (manifest[A] == manifest[Any]) printlog("warning: possible missing mtype call - reflectMirrored with Def of type Any: " + zd)
+    if (typ[A] == ManifestTyp(manifest[Any])) printlog("warning: possible missing mtype call - reflectMirrored with Def of type Any: " + zd)
     context.filter { case Def(d) if d == zd => true case _ => false }.reverse match {
       //case z::_ => z.asInstanceOf[Exp[A]]  -- unsafe: we don't have a tight context, so we might pick one from a flattened subcontext
       case _ => createReflectDefinition(fresh[A].withPos(List(pos)), zd)
@@ -415,7 +416,7 @@ trait Effects extends Expressions with Blocks with Utils {
     s
   }
 
-  def reflectMutable[A:Manifest](d: Def[A])(implicit pos: SourceContext): Exp[A] = {
+  def reflectMutable[A:Typ](d: Def[A])(implicit pos: SourceContext): Exp[A] = {
     val z = reflectEffect(d, Alloc())
 
     val mutableAliases = mutableTransitiveAliases(d)
@@ -423,7 +424,7 @@ trait Effects extends Expressions with Blocks with Utils {
     z
   }
 
-  def reflectWrite[A:Manifest](write0: Exp[Any]*)(d: Def[A])(implicit pos: SourceContext): Exp[A] = {
+  def reflectWrite[A:Typ](write0: Exp[Any]*)(d: Def[A])(implicit pos: SourceContext): Exp[A] = {
     val write = write0.toList.asInstanceOf[List[Sym[Any]]] // should check...
 
     val z = reflectEffect(d, Write(write))
@@ -433,16 +434,16 @@ trait Effects extends Expressions with Blocks with Utils {
     z
   }
 
-  def reflectEffect[A:Manifest](x: Def[A])(implicit pos: SourceContext): Exp[A] = reflectEffect(x, Simple()) // simple effect (serialized with respect to other simples)
+  def reflectEffect[A:Typ](x: Def[A])(implicit pos: SourceContext): Exp[A] = reflectEffect(x, Simple()) // simple effect (serialized with respect to other simples)
 
-  def reflectEffect[A:Manifest](d: Def[A], u: Summary)(implicit pos: SourceContext): Exp[A] = {
+  def reflectEffect[A:Typ](d: Def[A], u: Summary)(implicit pos: SourceContext): Exp[A] = {
     // are we depending on a variable? then we need to be serialized -> effect
     val mutableInputs = readMutableData(d)
     val control = if (conditionalScope && addControlDeps) Control() else Pure()
-    reflectEffectInternal(d, u andAlso Read(mutableInputs) andAlso control) // will call super.toAtom if pure
+    reflectEffectInternal(d, u andAlso Read(mutableInputs) andAlso control) // will call super.toAtom if pure (1.0.x if mutableInput.isEmpty)
   }
 
-  def reflectEffectInternal[A:Manifest](x: Def[A], u: Summary)(implicit pos: SourceContext): Exp[A] = {
+  def reflectEffectInternal[A:Typ](x: Def[A], u: Summary)(implicit pos: SourceContext): Exp[A] = {
     if (mustPure(u)) super.toAtom(x) else {
       checkContext()
       // NOTE: reflecting mutable stuff *during mirroring* doesn't work right now.
@@ -573,13 +574,19 @@ trait Effects extends Expressions with Blocks with Utils {
 
   // reify the effects of an isolated block.
   // no assumptions about the current context remain valid.
-  def reifyEffects[A:Manifest](block: => Exp[A]): Block[A] = {
+  def reifyEffects[A:Typ](block: => Exp[A], controlScope: Boolean = false): Block[A] = {
     val save = context
     context = Nil
+    
+    // only add control dependencies scopes where controlScope is explicitly true (i.e., the first-level of an IfThenElse)
+    val saveControl = conditionalScope
+    conditionalScope = controlScope
 
     val (result, defs) = reifySubGraph(block)
     reflectSubGraph(defs)
 
+    conditionalScope = saveControl
+    
     val deps = context
     val summary = summarizeAll(deps)
     context = save
@@ -589,13 +596,18 @@ trait Effects extends Expressions with Blocks with Utils {
 
   // reify the effects of a block that is executed 'here' (if it is executed at all).
   // all assumptions about the current context carry over unchanged.
-  def reifyEffectsHere[A:Manifest](block: => Exp[A]): Block[A] = {
+  def reifyEffectsHere[A:Typ](block: => Exp[A], controlScope: Boolean = false): Block[A] = {
     val save = context
     if (save eq null)
       context = Nil
+    
+    val saveControl = conditionalScope
+    conditionalScope = controlScope
 
     val (result, defs) = reifySubGraph(block)
     reflectSubGraph(defs)
+
+    conditionalScope = saveControl
 
     if ((save ne null) && context.take(save.length) != save) // TODO: use splitAt
       printerr("error: 'here' effects must leave outer information intact: " + save + " is not a prefix of " + context)

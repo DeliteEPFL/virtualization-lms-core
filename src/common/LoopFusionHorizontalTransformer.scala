@@ -232,7 +232,7 @@ trait LoopFusionHorizontalTransformer extends PreservingFixpointTransformer {
   def getInfoString = "LoopFusionHorizontalTransformer only runs once"
   var hasRunOnce = false
   def isDone = hasRunOnce
-  def runOnce[A:Manifest](s: Block[A]): Block[A] = {
+  def runOnce[A:Typ](s: Block[A]): Block[A] = {
     val newBlock = if (shouldDoFusion) transformBlock(s) else s
     hasRunOnce = true
     newBlock
