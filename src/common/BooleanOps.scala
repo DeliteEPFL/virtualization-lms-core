@@ -32,7 +32,7 @@ trait BooleanOps extends Variables {
   def boolean_or(lhs: Rep[Boolean], rhs: Rep[Boolean])(implicit pos: SourceContext): Rep[Boolean]
 }
 
-trait BooleanOpsExp extends BooleanOps with EffectExp {
+trait BooleanOpsExp extends BooleanOps with EffectExp with VariablesExp {
   implicit def boolTyp: Typ[Boolean] = manifestTyp
 
   case class BooleanNegate(lhs: Exp[Boolean]) extends Def[Boolean]
@@ -88,7 +88,8 @@ trait BooleanOpsExpOpt extends BooleanOpsExp {
   }
 }
 
-trait ScalaGenBooleanOps extends ScalaGenBase {
+// TODO: ScalaGenEffect or ScalaGenBase
+trait ScalaGenBooleanOps extends ScalaGenEffect {
   val IR: BooleanOpsExp
   import IR._
 
