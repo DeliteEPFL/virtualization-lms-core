@@ -9,11 +9,8 @@ trait LiftEquals extends Base {
   this: Equal =>
 
   // TODO: these will probably never get called due to original, equally specific == and !=
-  def __equal[A:Typ,B:Typ](a: A, b: B) : Rep[Boolean] = equals(unit(a),unit(b))
+  def infix_==[A:Typ,B:Typ](a: A, b: B) : Rep[Boolean] = equals(unit(a),unit(b))
   def infix_!=[A:Typ,B:Typ](a: A, b: B) : Rep[Boolean] = notequals(unit(a),unit(b))
-// =======
-//   def infix_==[A:Manifest,B:Manifest](a: A, b: B) : Rep[Boolean] = equals(unit(a),unit(b))
-// >>>>>>> macro-trans
 }
 
 trait Equal extends Base with Variables with OverloadHack {
