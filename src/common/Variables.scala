@@ -124,10 +124,10 @@ trait VariablesExp extends Variables with PrimitiveOps with ImplicitOpsExp with 
   }
 
   // atomic write rewrite rules
-  override def recurseLookup(sym: Exp[Any], trace: List[AtomicTracer]): (Exp[Any],List[AtomicTracer]) = sym match {
-    case Def(ReadVar(Variable(e))) => recurseLookup(e, VarTracer +: trace)
-    case Def(Reflect(ReadVar(Variable(e)),_,_)) => recurseLookup(e, VarTracer +: trace)
-    case _ => super.recurseLookup(sym,trace)
+  override def recurseLookup[T:Typ](sym: Exp[Any], trace: List[AtomicTracer]): (Exp[Any],List[AtomicTracer]) = sym match {
+    case Def(ReadVar(Variable(e))) => recurseLookup[T](e, VarTracer +: trace)
+    case Def(Reflect(ReadVar(Variable(e)),_,_)) => recurseLookup[T](e, VarTracer +: trace)
+    case _ => super.recurseLookup[T](sym,trace)
   }
 
   def var_new[T:Typ](init: Exp[T])(implicit pos: SourceContext): Var[T] = {

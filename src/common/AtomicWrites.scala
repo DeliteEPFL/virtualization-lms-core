@@ -44,8 +44,7 @@ trait AtomicWrites extends EffectExp {
 
   // Filled in by Structs.scala, Variables.scala, and DeliteArray.scala
   // (and DeliteMultiArray.scala)
-  // FIXME removed [T:Typ] T not used?
-  def recurseLookup(sym: Exp[Any], trace: List[AtomicTracer]): (Exp[Any],List[AtomicTracer]) = {
+  def recurseLookup[T:Typ](sym: Exp[Any], trace: List[AtomicTracer]): (Exp[Any],List[AtomicTracer]) = {
     (sym,trace)
   }
 
@@ -80,7 +79,7 @@ trait AtomicWrites extends EffectExp {
 
   // Version of reflectEffect used for Atomic Writes
   def reflectAtomicWrite[A:Typ](sym: Exp[Any])(d: AtomicWrite[A])(implicit ctx: SourceContext): Exp[Unit] = {
-    val (outerSym, trace) = recurseLookup(sym, Nil)
+    val (outerSym, trace) = recurseLookup[A](sym, Nil)
     val outerDef = if (trace.isEmpty) { d } else { NestedAtomicWrite[A](outerSym, trace, d.asNested) }
     reflectWrite(outerSym)(outerDef)
   }
