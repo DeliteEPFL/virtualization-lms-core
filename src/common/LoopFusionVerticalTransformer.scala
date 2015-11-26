@@ -463,8 +463,8 @@ trait LoopFusionVerticalTransformer extends PreservingFixpointTransformer {
 
       /* Transform loops - they might be a producer, consumer or both. */
       case TP(sym, LoopOrReflectedLoop(loop, effects)) =>
-        implicit def anyTyp: Typ[Any] = ManifestTyp(implicitly) // FIXME
-        transformLoop(stm, sym, loop, effects)
+//        implicit def anyTyp: Typ[Any] = ManifestTyp(implicitly) // FIXME
+        transformLoop(stm, sym, loop, effects)(anyTyp)
 
       /* Track other types of producers. */
       case TP(_, IfThenElse(_,_,_)) | TP(_, SingletonColl(_)) | TP(_, EmptyColl()) => 
@@ -503,8 +503,8 @@ trait LoopFusionVerticalTransformer extends PreservingFixpointTransformer {
     printlog("")
     seenLoops += sym
 
-    implicit def anyTyp: Typ[Any] = ManifestTyp(implicitly) // FIXME
-    val (fusionInfo, effectful) = findProducers(sym, loop, loop.size, loop.v, loop.body, effects)
+//    implicit def anyTyp: Typ[Any] = ManifestTyp(implicitly) // FIXME
+    val (fusionInfo, effectful) = findProducers(sym, loop, loop.size, loop.v, loop.body, effects)(anyTyp)
     fusionInfo.printLogBefore
 
     val fusionOutcome = doFusion(fusionInfo, stm, Right(true), effectful)

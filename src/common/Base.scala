@@ -27,6 +27,8 @@ trait Base extends EmbeddedControls {
 
   implicit def unitTyp: Typ[Unit]
   implicit def nullTyp: Typ[Null]
+  implicit def nothingTyp: Typ[Nothing]
+  def anyTyp: Typ[Any] // defined here as it is needed in multiple places, but not implicit as it causes ambiguity
 
   def typ[T:Typ]: Typ[T]
 
@@ -48,6 +50,9 @@ trait BaseExp extends Base with Expressions with Blocks with Transforming {
 
   implicit def unitTyp: Typ[Unit] = manifestTyp
   implicit def nullTyp: Typ[Null] = manifestTyp
+  implicit def nothingTyp: Typ[Nothing] = manifestTyp
+  def anyTyp: Typ[Any] = manifestTyp
+
 
   protected def unit[T:Typ](x: T) = Const(x)
 }
