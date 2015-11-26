@@ -40,6 +40,12 @@ trait HashMapOps extends Base {
 }
 
 trait HashMapOpsExp extends HashMapOps with EffectExp with BooleanOpsExp with SetOpsExp with IterableOpsExp {
+  implicit def hashMapTyp[K:Typ,V:Typ]: Typ[HashMap[K,V]] = {
+    implicit val ManifestTyp(mK) = typ[K]
+    implicit val ManifestTyp(mV) = typ[V]
+    ManifestTyp(implicitly)
+  }
+
   abstract class HashMapDef[K:Typ,V:Typ,R:Typ] extends Def[R] {
     val mK = manifest[K]
     val mV = manifest[V]
