@@ -162,7 +162,7 @@ trait CLikeCodegen extends GenericCodegen {
   
   override def quote(x: Exp[Any]) = x match {
     case Const(s: Unit) => ""
-    case Const(l: Long) => l.toString + "LL"
+    case Const(l: Long) => l.toString + "L"
     case Const(s: Float) => s+"f"
     case Const(null) => "NULL"
     case Const(z) if z.toString == "Infinity" => s"std::numeric_limits<${remap(x.tp)}>::infinity()"
