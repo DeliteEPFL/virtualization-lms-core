@@ -28,11 +28,11 @@ trait StructOps extends Base {
   def field[T:Typ](struct: Rep[Any], index: String)(implicit pos: SourceContext): Rep[T]
 }
 
-trait StructTags extends Expressions {
+trait StructTags {
   abstract class StructTag[+T]
   case class ClassTag[T](name: String) extends StructTag[T]
   case class NestClassTag[C[_],T](elem: StructTag[T]) extends StructTag[C[T]]
-  case class AnonTag[T](fields: RefinedTyp[T]) extends StructTag[T]
+  case class AnonTag[T](fields: RefinedManifest[T]) extends StructTag[T]
   case class MapTag[T]() extends StructTag[T]
 }
 
@@ -73,8 +73,8 @@ trait StructExp extends StructOps with StructTags with BaseExp with AtomicWrites
     def unapply[T:Typ] = unapplyStructType[T]
   }
 
-  def unapplyStructType[T:Typ]: Option[(StructTag[T], List[(String,Typ[_])])] = manifest[T] match {
-    case r: RefinedTyp[T] => Some(AnonTag(r), r.fields)
+  def unapplyStructType[T:Typ]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
+    case r: RefinedManifest[T] => Some(AnonTag(r), r.fields)
     case _ => None
   }
 
@@ -117,7 +117,7 @@ trait StructExp extends StructOps with StructTags with BaseExp with AtomicWrites
       case (index, true, rhs) => val y = rhs(x); (index, var_new(y)(y.tp,implicitly[SourceContext]).e)
     }
     val ManifestTyp(manifest) = typ[T]
-    struct(AnonTag(manifest.asInstanceOf[RefinedTyp[T]]), fieldSyms)
+    struct(AnonTag(manifest.asInstanceOf[RefinedManifest[T]]), fieldSyms)
   }
 
   def record_select[T : Typ](record: Rep[Record], fieldName: String) = {

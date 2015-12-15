@@ -38,26 +38,6 @@ trait Expressions extends Utils {
     override def toString = mf.toString
   }
 
-  trait RefinedTyp[T] extends Typ[T] {
-//    override
-    def canEqual(other: Any) = other match {
-      case _: RefinedTyp[_] => true
-      case _                     => false
-    }
-
-    /** Tests whether the type represented by this manifest is equal to
-      * the type represented by `that` manifest, subject to the limitations
-      * described in the header.
-      */
-    override def equals(that: Any): Boolean = that match {
-      case m: RefinedTyp[_] => (m canEqual this) && (this.erasure == m.erasure)
-      case _                     => false
-    }
-    override def hashCode = this.erasure.##
-
-    def fields: List[(String, Typ[_])]
-  }
-
   def typ[T:Typ]: Typ[T] = implicitly[Typ[T]]
 
   def simpleClassTyp[C](c: Class[C]): Typ[C] =
