@@ -20,7 +20,7 @@ import scala.reflect.SourceContext
 
 trait TestDSL extends BaseExp with LiftAll {
   
-  implicit def anyTyp: Typ[Any] = ManifestTyp(implicitly)
+  implicit def anyTyp: Typ[Any] = ManifestTyp(implicitly) // FIXME
   implicit def boolTyp: Typ[Boolean] = ManifestTyp(implicitly)
   implicit def intTyp: Typ[Int] = ManifestTyp(implicitly)
   implicit def stringTyp: Typ[String] = ManifestTyp(implicitly)

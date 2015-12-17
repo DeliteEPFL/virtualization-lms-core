@@ -73,8 +73,8 @@ trait StructExp extends StructOps with StructTags with BaseExp with AtomicWrites
     def unapply[T:Typ] = unapplyStructType[T]
   }
 
-  def unapplyStructType[T:Typ]: Option[(StructTag[T], List[(String,Manifest[_])])] = manifest[T] match {
-    case r: RefinedManifest[T] => Some(AnonTag(r), r.fields)
+  def unapplyStructType[T:Typ]: Option[(StructTag[T], List[(String,Typ[_])])] = manifest[T] match {
+    case r: RefinedManifest[T] => Some(AnonTag(r), r.fields.map{case (s,m) => (s,ManifestTyp(m))})
     case _ => None
   }
 

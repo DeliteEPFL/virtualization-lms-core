@@ -33,6 +33,7 @@ trait BaseStr extends Base {
 
   implicit def unitTyp: Typ[Unit] = Typ(implicitly)
   implicit def nullTyp: Typ[Null] = Typ(implicitly)
+  implicit def nothingTyp: Typ[Nothing] = Typ[Nothing](implicitly)
 }
 
 trait ArithStr extends Arith with BaseStr {
